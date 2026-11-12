@@ -1,0 +1,18 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+requests>=2.32
+python-dotenv>=1.0
+python-multipart>=0.0.9
+# $0 mode: local transcription (CPU, no paid API).
+# Verified 2026-11-09 on this VM (Python 3.12, 1.5 CPU / 6 GB RAM):
+# faster-whisper 1.2.1 + av==13.1.0 is REQUIRED — av 19.x breaks
+# faster-whisper (av.open() rejects metadata_errors) and av 14.x has
+# no wheel for Python 3.12 (build fails). Do NOT upgrade av past 13.1.0
+# without re-running the transcription test.
+faster-whisper==1.2.1
+av==13.1.0
+# Optional — only needed to enable Google Calendar (disabled by default):
+# google-api-python-client>=2.0
+# google-auth>=2.0
+# Test-audio generation only (not needed for the app itself):
+# gTTS>=2.5
