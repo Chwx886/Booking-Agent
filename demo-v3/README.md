@@ -5,8 +5,8 @@ A 62-second promo animation in **one self-contained HTML file**
 there's no build step and the page loads **no external URLs**. Open it
 offline and it plays.
 
-This is a demo for screen recording only. It doesn't send, post or email
-anything.
+This is a demo for screen recording only. It plays silently by design and
+doesn't send, post or email anything.
 
 ![preview](preview.gif)
 
@@ -15,10 +15,10 @@ anything.
 | Time | Scene | What's on screen |
 |---|---|---|
 | 0–3 s | Title | Booking Agent, for Perth restaurants & local businesses |
-| 3–6 s | 01 · The call | The owner's phone rings (ring sound) and he answers |
+| 3–6 s | 01 · The call | The owner's phone rings and he answers |
 | 6–19 s | 02 · Booking Agent listens | In-call screen with REC badge; transcript panel. Booking details light up amber; useless chatter ("the traffic was terrible getting here", "a friend recommended you", "we're celebrating my dad's 60th") stays grey |
 | 19–22.5 s | 03 · Chatter out | Call ends; the chatter is struck out |
-| 22.5–30 s | 04 · WhatsApp | WhatsApp ping, then a dedicated phone scene with the real WhatsApp mobile UI (header reads **WhatsApp**). The cleaned summary is a chat message, held ~7 s. *Special requests: Not stated* (never guessed). Side card shows what was kept, dropped and not stated |
+| 22.5–30 s | 04 · WhatsApp | WhatsApp notification, then a dedicated phone scene with the real WhatsApp mobile UI (header reads **WhatsApp**). The cleaned summary is a chat message, held ~7 s. *Special requests: Not stated* (never guessed). Side card shows what was kept, dropped and not stated |
 | 30–34.5 s | 05 · Calendar | Booking drops into Saturday 21 Nov, 7:00 PM |
 | 34.5–36.5 s | Not just restaurants | Bridge card |
 | 36.5–46 s | Car sales | Buyer books a viewing; WhatsApp shows only visit time, car model, price range, name, phone |
@@ -38,7 +38,6 @@ automatically and scales to fit any 16:9 window.
 |---|---|---|
 | Play / Pause | Space | |
 | Replay | R | Restart from 0 |
-| Sound on/off | S | Ring and WhatsApp ping (off by default: browsers block sound until you click) |
 | | ← / → | Jump back / forward 1 s |
 | | H | Hide / show the control bar |
 
@@ -48,14 +47,12 @@ paused. Combine them, e.g. `index.html?record&loop`.
 
 ## Record it
 
-**Screen recorder (with sound):** open `index.html`, click **Sound: on**,
-press **H** to hide the controls, go full screen (Ctrl+Cmd+F on Mac, F11 on
+**Screen recorder:** open `index.html`, press **H** to hide the controls, go full screen (Ctrl+Cmd+F on Mac, F11 on
 Windows), start your recorder (Mac: Cmd+Shift+5; Windows: Win+Alt+R or OBS),
 then press **R** to replay from the start. Stop after the end card (~63 s).
 
 **Frame-perfect MP4 (no dropped frames):** `capture.mjs` steps through the
-animation in a headless browser, encodes 1920×1080 MP4 and lays the ring and
-ping sounds in at the exact cue times. Needs Node 18+ and ffmpeg.
+animation in a headless browser, encodes a silent 1920×1080 MP4. Needs Node 18+ and ffmpeg.
 
 ```bash
 cd demo-v3
@@ -66,13 +63,6 @@ node capture.mjs --fps 60 --width 3840                 # 4K 60 fps
 ```
 
 `out/` is git-ignored.
-
-## Sounds
-
-The phone ring and WhatsApp ping must be CC0 sounds from Openverse. They are
-embedded in `index.html` as base64 `data:` URIs in the `SOUNDS` object, so
-the page still needs no network. Credits are in `SOUNDS.md`. If `SOUNDS` is
-empty, the Sound button shows "n/a" and the demo plays silently.
 
 ## Editing
 
