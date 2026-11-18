@@ -23,7 +23,7 @@ anything.
 | 34.5–36.5 s | Not just restaurants | Bridge card |
 | 36.5–46 s | Car sales | Buyer books a viewing; WhatsApp shows only visit time, car model, price range, name, phone |
 | 46–56.3 s | Car service & tinting | Driver asks a price, books; WhatsApp shows only service, car, price, booked time, name, phone |
-| 56.3–62 s | End card | "Never miss a booking again. From $99/month. Free two-week trial for the first restaurant." |
+| 56.3–62 s | End card | "Never miss a booking again. From $99/month. Free two-week trial for the first business." |
 
 Restaurant booking: **Sarah Johnson, Sat 21 Nov, 7:00 PM, 2 tables, 8 adults
 + 2 children, 1 child with a peanut allergy, 0423 456 789.** All names,
