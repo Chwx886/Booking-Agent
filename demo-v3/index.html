@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booking Agent Promo v3</title>
+<style>
+  :root {
+    --bg0: #0d0f14;
+    --bg1: #171a22;
+    --panel: #1d212b;
+    --panel2: #252a36;
+    --line: #2f3542;
+    --text: #f4f1ea;
+    --muted: #9aa1ad;
+    --accent: #f5a524;
+    --accent-soft: rgba(245, 165, 36, .18);
+    --rec: #ff4d4f;
+    --ok: #3ccf91;
+    --wa: #25d366;
+    --wa-dark: #0b141a;
+    --wa-bubble: #005c4b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  body {
+    font-family: "Inter", "Inter Display", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Noto Sans SC", sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 1920x1080 stage, scaled to fit the window */
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: 0 0;
+    background:
+      radial-gradient(1200px 700px at 78% 30%, rgba(245,165,36,.10), transparent 60%),
+      radial-gradient(900px 600px at 10% 90%, rgba(60,207,145,.06), transparent 60%),
+      linear-gradient(160deg, var(--bg1), var(--bg0));
+    overflow: hidden;
+  }
+  .abs { position: absolute; }
+  .fade { will-change: opacity, transform; }
+
+  /* ---------- brand mark ---------- */
+  .brand { display: flex; align-items: center; gap: 14px; font-weight: 700; letter-spacing: -.01em; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: var(--accent); color: #1a1205;
+    display: grid; place-items: center;
+  }
+  .logo svg { width: 26px; height: 26px; }
+  #corner { left: 120px; top: 64px; font-size: 22px; color: var(--text); }
+  #corner .tag { font-weight: 500; color: var(--muted); font-size: 18px; margin-left: 6px; }
+
+  /* ---------- captions (left column) ---------- */
+  .cap { left: 120px; top: 300px; width: 600px; }
+  .cap .kicker {
+    font-size: 20px; font-weight: 600; color: var(--accent);
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: 22px;
+  }
+  .cap h2 { font-size: 64px; line-height: 1.06; font-weight: 750; letter-spacing: -.025em; }
+  .cap p { margin-top: 26px; font-size: 26px; line-height: 1.45; color: var(--muted); max-width: 540px; }
+  .cap p b { color: var(--text); font-weight: 600; }
+
+  #steps { left: 120px; top: 930px; display: flex; gap: 12px; }
+  #steps i { display: block; width: 44px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; position: relative; }
+  #steps i b { position: absolute; inset: 0; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); }
+
+  /* ---------- title + end cards ---------- */
+  .card-full { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .card-full .logo { width: 96px; height: 96px; border-radius: 26px; margin-bottom: 36px; }
+  .card-full .logo svg { width: 56px; height: 56px; }
+  .card-full h1 { font-size: 96px; font-weight: 800; letter-spacing: -.035em; }
+  .card-full .sub { margin-top: 22px; font-size: 34px; color: var(--muted); font-weight: 500; }
+  .card-full .sub em { font-style: normal; color: var(--accent); }
+  .pills { margin-top: 48px; display: flex; gap: 16px; justify-content: center; }
+  .pill { padding: 14px 26px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 22px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+  .pill .d { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ---------- phone ---------- */
+  #phone { left: 760px; top: 120px; width: 410px; height: 840px; }
+  .phone-frame {
+    position: absolute; inset: 0; border-radius: 62px;
+    background: #050608; padding: 14px;
+    box-shadow: 0 0 0 2px #3a3f4b, 0 40px 120px rgba(0,0,0,.6), 0 0 0 10px rgba(255,255,255,.02);
+  }
+  .screen { position: absolute; inset: 14px; border-radius: 50px; overflow: hidden; background: #000; }
+  .island { position: absolute; top: 14px; left: 50%; width: 118px; height: 34px; margin-left: -59px; background: #000; border-radius: 20px; z-index: 20; }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 6px 34px 0; font-size: 17px; font-weight: 600; z-index: 15; }
+  .sb-icons { display: flex; gap: 6px; align-items: center; }
+  .sb-icons span { display: block; background: currentColor; border-radius: 2px; }
+  .ps { position: absolute; inset: 0; }
+
+  /* incoming call */
+  #ps-ring { background: linear-gradient(180deg, #2a2f3a, #12151b); }
+  .callhead { position: absolute; top: 140px; left: 0; right: 0; text-align: center; }
+  .callhead .lbl { font-size: 19px; color: var(--muted); }
+  .callhead .num { font-size: 36px; font-weight: 600; margin-top: 10px; letter-spacing: -.01em; }
+  .callhead .loc { font-size: 18px; color: var(--muted); margin-top: 8px; }
+  .callbtns { position: absolute; bottom: 110px; left: 0; right: 0; display: flex; justify-content: space-around; padding: 0 40px; }
+  .cb { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 16px; color: var(--muted); }
+  .cb .c { width: 82px; height: 82px; border-radius: 50%; display: grid; place-items: center; }
+  .cb .c svg { width: 36px; height: 36px; fill: #fff; }
+  .red { background: #ff3b30; }
+  .green { background: #34c759; }
+  .ripple { position: absolute; border-radius: 50%; border: 2px solid rgba(52,199,89,.7); }
+
+  /* in-call */
+  #ps-call { background: linear-gradient(180deg, #1f2430, #0e1015); }
+  .avatar { width: 108px; height: 108px; border-radius: 50%; margin: 0 auto 18px; background: #3b4252; display: grid; place-items: center; font-size: 44px; color: #c8ced8; }
+  .recbadge {
+    position: absolute; top: 76px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    padding: 8px 16px; border-radius: 999px; background: rgba(255,77,79,.14);
+    border: 1px solid rgba(255,77,79,.4); font-size: 15px; font-weight: 600; color: #ffb3b4;
+  }
+  .recdot { width: 10px; height: 10px; border-radius: 50%; background: var(--rec); }
+  .grid6 { position: absolute; top: 420px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 26px; padding: 0 40px; }
+  .g { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .g i { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,.12); display: block; }
+  .endbtn { position: absolute; bottom: 70px; left: 50%; margin-left: -41px; }
+
+  /* call ended / lock */
+  #ps-lock { background:
+      radial-gradient(500px 400px at 30% 20%, rgba(245,165,36,.35), transparent 60%),
+      radial-gradient(500px 500px at 80% 90%, rgba(37,211,102,.20), transparent 60%),
+      linear-gradient(180deg, #232836, #0b0d12); }
+  .lockclock { position: absolute; top: 110px; left: 0; right: 0; text-align: center; }
+  .lockclock .d { font-size: 20px; font-weight: 600; color: rgba(255,255,255,.8); }
+  .lockclock .t { font-size: 96px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; }
+  .ended { position: absolute; top: 330px; left: 22px; right: 22px; padding: 18px 20px; border-radius: 22px; background: rgba(30,34,44,.78); backdrop-filter: blur(10px); }
+  .ended .r1 { display: flex; justify-content: space-between; font-size: 15px; color: var(--muted); }
+  .ended .r2 { margin-top: 6px; font-size: 18px; font-weight: 600; }
+  .ended .r3 { margin-top: 4px; font-size: 16px; color: var(--muted); }
+
+  .notif { position: absolute; top: 58px; left: 12px; right: 12px; padding: 16px 18px; border-radius: 24px; background: rgba(40,44,54,.92); backdrop-filter: blur(14px); z-index: 18; box-shadow: 0 20px 40px rgba(0,0,0,.4); }
+  .notif .h { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--muted); }
+  .wa-ic { width: 26px; height: 26px; border-radius: 7px; background: var(--wa); display: grid; place-items: center; }
+  .wa-ic svg { width: 17px; height: 17px; fill: #fff; }
+  .notif .h .now { margin-left: auto; }
+  .notif .b { margin-top: 8px; font-size: 17px; font-weight: 600; }
+  .notif .c { margin-top: 2px; font-size: 16px; color: #d4d8de; }
+
+  /* WhatsApp chat */
+  #ps-wa { background: var(--wa-dark); }
+  .wa-top { position: absolute; top: 0; left: 0; right: 0; height: 128px; background: #1f2c34; display: flex; align-items: flex-end; padding: 0 20px 16px; gap: 14px; }
+  .wa-top .av { width: 46px; height: 46px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; color: #1a1205; }
+  .wa-top .av svg { width: 26px; height: 26px; }
+  .wa-top .nm { font-size: 19px; font-weight: 600; }
+  .wa-top .st { font-size: 14px; color: #8696a0; margin-top: 2px; }
+  .wa-body { position: absolute; top: 128px; left: 0; right: 0; bottom: 84px; padding: 18px 16px;
+    background-color: #0b141a;
+    background-image: radial-gradient(rgba(255,255,255,.035) 1.5px, transparent 1.5px);
+    background-size: 22px 22px; }
+  .wa-day { text-align: center; margin-bottom: 14px; }
+  .wa-day span { font-size: 13px; padding: 5px 12px; border-radius: 8px; background: #182229; color: #8696a0; }
+  .wa-msg { width: 300px; padding: 12px 14px 8px; border-radius: 12px 12px 12px 4px; background: #1f2c34; font-size: 16.5px; line-height: 1.5; }
+  .wa-msg .ttl { font-weight: 700; margin-bottom: 6px; }
+  .wa-row { display: flex; gap: 8px; }
+  .wa-row .k { color: #8696a0; width: 62px; flex: none; }
+  .wa-msg .meta { text-align: right; font-size: 12px; color: #8696a0; margin-top: 4px; }
+  .wa-input { position: absolute; bottom: 0; left: 0; right: 0; height: 84px; background: #1f2c34; display: flex; align-items: center; padding: 0 14px 14px; gap: 10px; }
+  .wa-input div { flex: 1; height: 44px; border-radius: 22px; background: #2a3942; }
+  .wa-input i { width: 44px; height: 44px; border-radius: 50%; background: #00a884; display: block; }
+
+  /* ---------- right panel ---------- */
+  .panel {
+    left: 1250px; top: 150px; width: 560px;
+    border-radius: 28px; background: var(--panel); border: 1px solid var(--line);
+    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  }
+  .ph { display: flex; align-items: center; gap: 12px; padding: 22px 26px; border-bottom: 1px solid var(--line); font-size: 18px; font-weight: 600; }
+  .ph .logo { width: 34px; height: 34px; border-radius: 9px; }
+  .ph .logo svg { width: 20px; height: 20px; }
+  .ph .right { margin-left: auto; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+  /* recording card */
+  #rec { height: 780px; }
+  .wave { height: 92px; margin: 20px 26px 6px; display: flex; align-items: center; gap: 5px; }
+  .wave i { flex: 1; border-radius: 3px; background: var(--accent); display: block; min-height: 4px; }
+  .notice { margin: 0 26px; font-size: 15px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .notice b { color: var(--ok); font-weight: 600; }
+  .tx { padding: 18px 26px; display: flex; flex-direction: column; gap: 14px; }
+  .bub { max-width: 430px; padding: 14px 18px; border-radius: 18px; font-size: 20px; line-height: 1.42; }
+  .bub .who { display: block; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .bub.caller { background: var(--panel2); align-self: flex-start; border-bottom-left-radius: 6px; }
+  .bub.caller .who { color: var(--accent); }
+  .bub.owner { background: #2b3a33; align-self: flex-end; border-bottom-right-radius: 6px; }
+  .bub.owner .who { color: var(--ok); }
+  .w { transition: none; }
+  .hl { border-radius: 6px; padding: 1px 4px; margin: 0 -4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+  /* extracted facts card */
+  #facts { height: 640px; top: 200px; }
+  .frow { display: flex; align-items: center; gap: 18px; padding: 19px 26px; border-bottom: 1px solid var(--line); }
+  .frow:last-child { border-bottom: 0; }
+  .ficon { width: 46px; height: 46px; border-radius: 12px; background: var(--accent-soft); display: grid; place-items: center; flex: none; }
+  .ficon svg { width: 24px; height: 24px; stroke: var(--accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .fk { font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .fv { font-size: 23px; font-weight: 650; margin-top: 2px; }
+  .fcheck { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; }
+  .fcheck svg { width: 16px; height: 16px; stroke: #062b1b; stroke-width: 3; fill: none; }
+
+  /* calendar */
+  #cal { height: 720px; top: 160px; }
+  .calday { padding: 18px 26px 6px; display: flex; align-items: baseline; gap: 14px; }
+  .calday .dn { font-size: 40px; font-weight: 750; letter-spacing: -.02em; }
+  .calday .dm { font-size: 20px; color: var(--muted); }
+  .calgrid { position: absolute; left: 26px; right: 26px; top: 166px; height: 440px; }
+  .hr { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+  .hr span { position: absolute; left: 0; top: -10px; font-size: 14px; color: var(--muted); width: 58px; }
+  .ev { position: absolute; border-radius: 12px; padding: 10px 14px; font-size: 16px; line-height: 1.35; overflow: hidden; }
+  .ev.old { background: #2a3040; border-left: 4px solid #5b6478; color: #c9ced8; }
+  .ev.old b { color: var(--text); }
+  .ev.new { background: linear-gradient(180deg, #3a2c10, #2c230f); border: 2px solid var(--accent); color: var(--text); z-index: 3; }
+  .ev.new .t1 { font-size: 18px; font-weight: 700; }
+  .ev.new .t2 { font-size: 15px; color: #e9dcc4; margin-top: 2px; }
+  .ev.new .t3 { font-size: 15px; color: var(--accent); margin-top: 2px; font-weight: 600; }
+  .synced { position: absolute; left: 26px; bottom: 22px; font-size: 15px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+
+  .toast { left: 1250px; top: 905px; width: 560px; padding: 18px 22px; border-radius: 18px; background: #12382a; border: 1px solid #1f6b4e; display: flex; gap: 14px; align-items: center; font-size: 19px; font-weight: 600; }
+  .toast .fcheck { margin-left: 0; }
+
+  /* ---------- controls (hidden in record mode) ---------- */
+  #ui {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: rgba(20,22,28,.88); border: 1px solid #333a46; border-radius: 14px;
+    font: 500 13px/1 -apple-system, "Segoe UI", Roboto, sans-serif; color: #cfd4dc;
+    z-index: 100; transition: opacity .3s;
+  }
+  #ui button { background: #2b313d; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  #ui button:hover { background: #3a4252; }
+  #ui input[type=range] { width: min(420px, 40vw); accent-color: #f5a524; }
+  #ui .k { color: #8a919c; }
+  body.rec #ui, body.hideui #ui { opacity: 0; pointer-events: none; }
+  body.rec { cursor: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- persistent corner brand -->
+  <div id="corner" class="abs brand fade">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="M15 3.5l2 2 4-4"/></svg></div>
+    Booking Agent <span class="tag">for Perth restaurants &amp; local businesses</span>
+  </div>
+
+  <!-- captions -->
+  <div class="abs cap fade" id="cap1">
+    <div class="kicker">01 · The call</div>
+    <h2>A customer rings. You answer, like always.</h2>
+    <p>No new app, no robot voice. Your regular booking line, <b>you on the phone</b>.</p>
+  </div>
+  <div class="abs cap fade" id="cap2">
+    <div class="kicker">02 · Booking Agent listens</div>
+    <h2>The call is recorded in the background.</h2>
+    <p>A short notice plays in <b>English and 中文</b>. You just talk to your customer while the agent catches every detail.</p>
+  </div>
+  <div class="abs cap fade" id="cap3">
+    <div class="kicker">03 · Key facts only</div>
+    <h2>Hang up. The booking is already pulled out.</h2>
+    <p>Name, party size, date, time, phone and notes. <b>Nothing is guessed</b>: anything missing is flagged.</p>
+  </div>
+  <div class="abs cap fade" id="cap4">
+    <div class="kicker">04 · On your WhatsApp</div>
+    <h2>A tidy summary lands on your phone.</h2>
+    <p>Read it in two seconds between tables. <b>No replaying recordings</b>, no scribbled notes.</p>
+  </div>
+  <div class="abs cap fade" id="cap5">
+    <div class="kicker">05 · In your booking calendar</div>
+    <h2>…and it's already in the book.</h2>
+    <p>The booking drops into your calendar at the right time, with the allergy note attached.</p>
+  </div>
+
+  <div id="steps" class="abs fade"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+
+  <!-- PHONE -->
+  <div id="phone" class="abs fade">
+    <div class="phone-frame">
+      <div class="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span id="sbTime">5:41</span><span class="sb-icons"><span style="width:18px;height:11px"></span><span style="width:16px;height:11px;border-radius:3px"></span><span style="width:26px;height:12px;border-radius:4px"></span></span></div>
+
+        <!-- incoming -->
+        <div class="ps fade" id="ps-ring">
+          <div class="callhead">
+            <div class="lbl">Incoming call · Lotus Garden bookings</div>
+            <div class="num">+61 423 456 789</div>
+            <div class="loc">Mobile · Perth WA</div>
+          </div>
+          <div class="callbtns">
+            <div class="cb"><div class="c red"><svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.2.3-4.6.7v3.1c0 .4-.2.7-.6.9-1 .5-1.9 1.1-2.6 1.8-.2.2-.4.3-.7.3s-.5-.1-.7-.3L.3 13c-.2-.2-.3-.4-.3-.7s.1-.5.3-.7C3.4 8.7 7.5 7 12 7s8.6 1.7 11.7 4.6c.2.2.3.4.3.7s-.1.5-.3.7l-2.5 2.5c-.2.2-.4.3-.7.3s-.5-.1-.7-.3c-.8-.7-1.7-1.3-2.6-1.8-.4-.2-.6-.5-.6-.9V9.7C15.2 9.3 13.6 9 12 9z"/></svg></div>Decline</div>
+            <div class="cb" style="position:relative">
+              <div class="ripple" id="rip1" style="left:0;top:0;width:82px;height:82px"></div>
+              <div class="ripple" id="rip2" style="left:0;top:0;width:82px;height:82px"></div>
+              <div class="c green" id="answerBtn"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg></div>Accept</div>
+          </div>
+        </div>
+
+        <!-- in call -->
+        <div class="ps fade" id="ps-call">
+          <div class="recbadge"><span class="recdot" id="recdot2"></span>Recording · Booking Agent</div>
+          <div class="callhead" style="top:150px">
+            <div class="avatar">?</div>
+            <div class="num" style="font-size:32px">+61 423 456 789</div>
+            <div class="loc" id="callTimer" style="font-variant-numeric: tabular-nums">00:00</div>
+          </div>
+          <div class="grid6">
+            <div class="g"><i></i>mute</div><div class="g"><i></i>keypad</div><div class="g"><i></i>speaker</div>
+            <div class="g"><i></i>add call</div><div class="g"><i></i>FaceTime</div><div class="g"><i></i>contacts</div>
+          </div>
+          <div class="cb endbtn"><div class="c red" id="endBtn"><svg viewBox="0 0 24 24"><path d="M12 9c-1.6 0-3.2.3-4.6.7v3.1c0 .4-.2.7-.6.9-1 .5-1.9 1.1-2.6 1.8-.2.2-.4.3-.7.3s-.5-.1-.7-.3L.3 13c-.2-.2-.3-.4-.3-.7s.1-.5.3-.7C3.4 8.7 7.5 7 12 7s8.6 1.7 11.7 4.6c.2.2.3.4.3.7s-.1.5-.3.7l-2.5 2.5c-.2.2-.4.3-.7.3s-.5-.1-.7-.3c-.8-.7-1.7-1.3-2.6-1.8-.4-.2-.6-.5-.6-.9V9.7C15.2 9.3 13.6 9 12 9z"/></svg></div></div>
+        </div>
+
+        <!-- lock screen after call -->
+        <div class="ps fade" id="ps-lock">
+          <div class="lockclock"><div class="d">Wednesday 18 November</div><div class="t">5:43</div></div>
+          <div class="ended" id="endedCard">
+            <div class="r1"><span>📞 Phone</span><span>now</span></div>
+            <div class="r2">Call ended · 1:48</div>
+            <div class="r3">+61 423 456 789 · recorded for booking</div>
+          </div>
+          <div class="notif fade" id="notif">
+            <div class="h"><span class="wa-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.5 14.2c-.2.6-1.3 1.2-1.8 1.3-.5 0-1 .3-3.3-.7-2.8-1.1-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .5l-.3.5-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.3.3.1.4.1.6-.1l.8-1c.2-.3.4-.2.6-.1l2 1c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/></svg></span>WhatsApp<span class="now">now</span></div>
+            <div class="b">Booking Agent</div>
+            <div class="c">🍽️ New booking · Sarah Chen · 6 guests · Sat 21 Nov, 7:00 PM</div>
+          </div>
+        </div>
+
+        <!-- whatsapp -->
+        <div class="ps fade" id="ps-wa">
+          <div class="wa-top">
+            <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></div>
+            <div><div class="nm">Booking Agent</div><div class="st">Lotus Garden · bookings</div></div>
+          </div>
+          <div class="wa-body">
+            <div class="wa-day"><span>TODAY</span></div>
+            <div class="wa-msg fade" id="waMsg">
+              <div class="ttl">🍽️ New booking</div>
+              <div class="wa-row"><span class="k">Name</span><span>Sarah Chen</span></div>
+              <div class="wa-row"><span class="k">Guests</span><span>6 (4 adults, 2 kids)</span></div>
+              <div class="wa-row"><span class="k">Date</span><span>Sat 21 Nov</span></div>
+              <div class="wa-row"><span class="k">Time</span><span>7:00 PM</span></div>
+              <div class="wa-row"><span class="k">Phone</span><span>0423 456 789</span></div>
+              <div class="wa-row"><span class="k">Notes</span><span>⚠️ 1 child peanut allergy · window table</span></div>
+              <div class="meta">5:43 PM ✓✓</div>
+            </div>
+          </div>
+          <div class="wa-input"><div></div><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: live recording + transcript -->
+  <div id="rec" class="abs panel fade">
+    <div class="ph"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 12h2M9 7v10M14 4v16M19 9v6"/></svg></div>Booking Agent · listening
+      <span class="right"><span class="recdot" id="recdot"></span><span id="recTime" style="font-variant-numeric: tabular-nums">REC 00:00</span></span></div>
+    <div class="wave" id="wave"></div>
+    <div class="notice">✓ <b>Recording notice played</b> · English + 中文</div>
+    <div class="tx" id="tx"></div>
+  </div>
+
+  <!-- RIGHT: extracted facts -->
+  <div id="facts" class="abs panel fade">
+    <div class="ph"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>Booking captured<span class="right" style="color:var(--ok)">6 / 6 facts</span></div>
+    <div id="frows"></div>
+  </div>
+
+  <!-- RIGHT: calendar -->
+  <div id="cal" class="abs panel fade">
+    <div class="ph"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>Lotus Garden · Bookings<span class="right" style="color:var(--muted)">Day</span></div>
+    <div class="calday"><span class="dn">Saturday</span><span class="dm">21 November 2026</span></div>
+    <div class="calgrid" id="calgrid"></div>
+    <div class="synced"><span class="recdot" style="background:var(--ok)"></span>Synced with your booking calendar</div>
+  </div>
+  <div id="toast" class="abs toast fade"><span class="fcheck"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg></span>Booked. You didn't write a thing.</div>
+
+  <!-- title + end cards -->
+  <div id="title" class="abs card-full fade">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="M15 3.5l2 2 4-4"/></svg></div>
+    <h1>Booking Agent</h1>
+    <div class="sub">Phone bookings for Perth restaurants &amp; local businesses</div>
+  </div>
+  <div id="end" class="abs card-full fade">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="M15 3.5l2 2 4-4"/></svg></div>
+    <h1>You take the call.<br>We take the notes.</h1>
+    <div class="pills">
+      <div class="pill"><span class="d" style="background:var(--rec)"></span>Call recorded</div>
+      <div class="pill"><span class="d" style="background:var(--wa)"></span>Key facts on WhatsApp</div>
+      <div class="pill"><span class="d" style="background:var(--accent)"></span>Straight into your calendar</div>
+    </div>
+    <div class="sub" style="margin-top:44px;font-size:28px">Booking Agent · for Perth restaurants &amp; local businesses</div>
+  </div>
+</div>
+
+<div id="ui">
+  <button id="bPlay">Pause</button>
+  <button id="bRestart">Restart</button>
+  <input id="scrub" type="range" min="0" max="34" step="0.01" value="0">
+  <span id="tlabel" style="font-variant-numeric: tabular-nums; width:76px">0.0 / 34.0s</span>
+  <span class="k">Space play/pause · R restart · ←/→ seek · H hide</span>
+</div>
+
+<script>
+(() => {
+  const DURATION = 34;          // seconds
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const prog = (t, a, d) => clamp((t - a) / d);
+  const out3 = (x) => 1 - Math.pow(1 - x, 3);
+  const back = (x) => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  // visible from a to b, fading in/out over f seconds
+  const win = (t, a, b, f = 0.5) => Math.min(out3(prog(t, a, f)), 1 - out3(prog(t, b - f, f)));
+  const set = (el, o, tf = '') => { el.style.opacity = o.toFixed(3); el.style.transform = tf; el.style.visibility = o <= 0.001 ? 'hidden' : 'visible'; };
+
+  /* ---------- scene timing ---------- */
+  const T = {
+    title: [0, 3.4],
+    ring: [3.2, 6.6], answer: 5.6,
+    call: [6.0, 17.2], hangup: 16.6,
+    lock: [16.8, 23.2],
+    facts: [17.4, 25.6],
+    notif: 21.0, waOpen: 22.6, waMsg: 23.1,
+    cal: [25.4, 30.4], newEv: 26.3, toast: 27.6,
+    end: [30.2, DURATION + 1],
+  };
+  const caps = [['cap1', 3.2, 6.4], ['cap2', 6.4, 17.2], ['cap3', 17.2, 21.0], ['cap4', 21.0, 25.4], ['cap5', 25.4, 30.4]];
+
+  /* ---------- transcript ---------- */
+  // [who, startTime, duration, text]. {curly} = key fact highlight.
+  const LINES = [
+    ['caller', 7.4, 1.9, "Hi! Can I book a table for {this Saturday}, around {7pm}?"],
+    ['owner', 9.5, 0.9, "Sure. How many people?"],
+    ['caller', 10.6, 2.1, "{Six}: four adults and two kids. {One of the kids has a peanut allergy}."],
+    ['owner', 12.9, 0.9, "No problem. Name and number?"],
+    ['caller', 14.0, 2.2, "{Sarah Chen}, {0423 456 789}. And a {window table} if you can!"],
+  ];
+  const tx = $('tx');
+  const words = [];   // {el, t}
+  const phrases = []; // highlighted key facts {el, t}
+  const bubbles = [];
+  LINES.forEach(([who, start, dur, text], li) => {
+    const b = document.createElement('div');
+    b.className = 'bub ' + who + ' fade';
+    b.innerHTML = '<span class="who">' + (who === 'caller' ? 'Caller' : 'You') + '</span>';
+    const parts = text.split(/(\{[^}]+\})/).filter(Boolean);
+    const nWords = parts.join(' ').replace(/[{}]/g, '').split(/\s+/).filter(Boolean).length;
+    let i = 0;
+    parts.forEach((part) => {
+      const hl = part.startsWith('{');
+      const host = hl ? document.createElement('span') : b;
+      if (hl) { host.className = 'hl'; b.appendChild(host); }
+      const ws = [];
+      part.replace(/[{}]/g, '').split(/(\s+)/).forEach((w) => {
+        if (!w) return;
+        if (!w.trim()) { host.appendChild(document.createTextNode(w)); return; }
+        const s = document.createElement('span');
+        s.className = 'w'; s.textContent = w; host.appendChild(s);
+        const wt = start + (i / nWords) * dur; i++;
+        words.push({ el: s, t: wt }); ws.push(wt);
+      });
+      if (hl) phrases.push({ el: host, t: ws[ws.length - 1] });
+    });
+    tx.appendChild(b);
+    bubbles.push({ el: b, start });
+  });
+
+  /* ---------- waveform ---------- */
+  const wave = $('wave'); const bars = [];
+  for (let i = 0; i < 48; i++) { const b = document.createElement('i'); wave.appendChild(b); bars.push(b); }
+  const speaking = (t) => LINES.some(([, s, d]) => t >= s && t <= s + d + 0.15);
+  const speakerAt = (t) => { const l = LINES.find(([, s, d]) => t >= s && t <= s + d + 0.15); return l ? l[0] : null; };
+
+  /* ---------- facts ---------- */
+  const ICON = {
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    group: '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.5c3 0 5 1.6 5 4.5"/>',
+    cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    phone: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+    note: '<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+  };
+  const FACTS = [
+    ['user', 'Name', 'Sarah Chen'],
+    ['group', 'Party size', '6 · 4 adults, 2 children'],
+    ['cal', 'Date', 'Saturday 21 November'],
+    ['clock', 'Time', '7:00 PM'],
+    ['phone', 'Phone', '0423 456 789'],
+    ['note', 'Notes', 'Peanut allergy (1 child) · window table'],
+  ];
+  const frows = $('frows'); const factEls = [];
+  FACTS.forEach(([ic, k, v]) => {
+    const r = document.createElement('div'); r.className = 'frow fade';
+    r.innerHTML = '<span class="ficon"><svg viewBox="0 0 24 24">' + ICON[ic] + '</svg></span><div><div class="fk">' + k + '</div><div class="fv">' + v + '</div></div><span class="fcheck"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg></span>';
+    frows.appendChild(r); factEls.push(r);
+  });
+
+  /* ---------- calendar ---------- */
+  const grid = $('calgrid');
+  const H0 = 17, PX = 88, LANE_L = 66;        // 5 PM start, 100px per hour
+  for (let h = 17; h <= 22; h++) {
+    const r = document.createElement('div'); r.className = 'hr'; r.style.top = (h - H0) * PX + 'px';
+    r.innerHTML = '<span>' + (h - 12) + ' PM</span>'; grid.appendChild(r);
+  }
+  const laneW = (560 - 52 - LANE_L - 10) / 2;
+  const ev = (h, len, lane, html, cls) => {
+    const e = document.createElement('div'); e.className = 'ev ' + cls;
+    e.style.top = ((h - H0) * PX + 3) + 'px'; e.style.height = (len * PX - 6) + 'px';
+    e.style.left = (LANE_L + lane * (laneW + 10)) + 'px'; e.style.width = laneW + 'px';
+    e.innerHTML = html; grid.appendChild(e); return e;
+  };
+  ev(17.5, 1, 0, '<b>Nguyen</b> · 4 guests', 'old');
+  ev(18, 1, 1, '<b>Patel</b> · 2 guests', 'old');
+  ev(19.5, 1.5, 1, '<b>Murphy</b> · 8 guests<br>Birthday', 'old');
+  ev(20.5, 1, 0, '<b>Lee</b> · 3 guests', 'old');
+  const newEv = ev(19, 1.5, 0, '<div class="t1">Sarah Chen · 6</div><div class="t2">4 adults, 2 kids<br>0423 456 789</div><div class="t3">⚠ Peanut allergy · window</div>', 'new');
+
+  const stepBars = [...document.querySelectorAll('#steps b')];
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+  /* ---------- render one frame for time t (deterministic) ---------- */
+  function render(t) {
+    // title + end
+    const ti = win(t, -1, T.title[1], 0.6);
+    set($('title'), ti, `scale(${1 + 0.04 * prog(t, 0, 3.4)})`);
+    const en = out3(prog(t, T.end[0], 0.8));
+    set($('end'), en, `translateY(${(1 - en) * 30}px)`);
+
+    const main = Math.min(out3(prog(t, 3.0, 0.6)), 1 - out3(prog(t, T.end[0] - 0.3, 0.6)));
+    set($('corner'), main);
+    set($('steps'), main);
+
+    // captions
+    caps.forEach(([id, a, b], i) => {
+      const o = win(t, a, b, 0.55);
+      set($(id), o, `translateY(${(1 - o) * 24}px)`);
+      stepBars[i].style.transform = `scaleX(${prog(t, a, b - a)})`;
+    });
+
+    // phone
+    const pIn = out3(prog(t, 3.0, 0.8));
+    const ring = (t > 3.4 && t < T.answer) ? Math.sin(t * 38) * 2.2 * (Math.sin(t * 3.2) > 0 ? 1 : 0) : 0;
+    set($('phone'), Math.min(pIn, main), `translateY(${(1 - pIn) * 120 - (1 - main) * 0}px) rotate(${ring}deg)`);
+
+    // phone screens
+    set($('ps-ring'), win(t, -1, 6.3, 0.35));
+    const ap = prog(t, T.answer, 0.25);
+    $('answerBtn').style.transform = `scale(${t > T.answer && t < T.answer + 0.5 ? 1 - 0.12 * Math.sin(ap * Math.PI) : 1})`;
+    [['rip1', 0], ['rip2', 0.6]].forEach(([id, off]) => {
+      const ph = ((t - 3.4 + off) % 1.2) / 1.2;
+      const on = t > 3.4 && t < T.answer;
+      const r = $(id); r.style.opacity = on ? (1 - ph) : 0; r.style.transform = `scale(${1 + ph * 0.8})`;
+    });
+    set($('ps-call'), win(t, T.call[0], T.call[1], 0.35));
+    const callSecs = clamp((t - 6.0) / (T.hangup - 6.0)) * 108;
+    $('callTimer').textContent = fmt(callSecs);
+    $('endBtn').style.transform = `scale(${t > T.hangup && t < T.hangup + 0.4 ? 0.88 : 1})`;
+    set($('ps-lock'), win(t, T.lock[0], T.lock[1], 0.4));
+    const np = out3(prog(t, T.notif, 0.5));
+    set($('notif'), Math.min(np, 1 - prog(t, T.waOpen - 0.2, 0.3)), `translateY(${(1 - np) * -60}px)`);
+    set($('endedCard'), 1, `translateY(${np * 70}px)`);
+    set($('ps-wa'), win(t, T.waOpen, 31, 0.35), `scale(${0.96 + 0.04 * out3(prog(t, T.waOpen, 0.4))})`);
+    const wm = prog(t, T.waMsg, 0.45);
+    set($('waMsg'), out3(wm), `translateY(${(1 - out3(wm)) * 24}px) scale(${0.94 + 0.06 * back(wm)})`);
+    $('sbTime').textContent = t < 16.8 ? '5:41' : '5:43';
+
+    // recording panel
+    const ro = win(t, T.call[0] + 0.3, T.call[1] + 0.3, 0.5);
+    set($('rec'), ro, `translateX(${(1 - ro) * 40}px)`);
+    $('recTime').textContent = 'REC ' + fmt(callSecs);
+    const blink = (Math.floor(t * 2) % 2 === 0 && t < T.hangup) ? 1 : 0.25;
+    $('recdot').style.opacity = blink; $('recdot2').style.opacity = blink;
+    const sp = speakerAt(t);
+    bars.forEach((b, i) => {
+      const n = Math.abs(Math.sin(i * 0.9 + t * 9) * Math.sin(i * 0.37 + t * 5.3));
+      const amp = t > T.hangup ? 0.04 : (sp ? 0.25 + 0.75 * n : 0.06 + 0.06 * n);
+      b.style.height = (amp * 88 + 4) + 'px';
+      b.style.background = sp === 'owner' ? 'var(--ok)' : 'var(--accent)';
+      b.style.opacity = sp ? 1 : 0.5;
+    });
+    bubbles.forEach(({ el, start }) => {
+      const o = out3(prog(t, start - 0.15, 0.3));
+      set(el, o, `translateY(${(1 - o) * 14}px)`);
+    });
+    words.forEach(({ el, t: wt }) => {
+      el.style.opacity = (0.15 + 0.85 * prog(t, wt, 0.12)).toFixed(2);
+    });
+    phrases.forEach(({ el, t: pt }) => {
+      const h = prog(t, pt + 0.1, 0.3);
+      el.style.background = `rgba(245,165,36,${0.28 * h})`;
+      el.style.color = h > 0.5 ? '#ffd58a' : '';
+    });
+
+    // facts panel
+    const fo = win(t, T.facts[0], T.facts[1], 0.5);
+    set($('facts'), fo, `translateX(${(1 - fo) * 40}px)`);
+    factEls.forEach((r, i) => {
+      const p = out3(prog(t, 18.0 + i * 0.32, 0.4));
+      set(r, p, `translateX(${(1 - p) * -30}px)`);
+    });
+
+    // calendar
+    const co = win(t, T.cal[0], T.cal[1] + 0.3, 0.5);
+    set($('cal'), co, `translateX(${(1 - co) * 40}px)`);
+    const ne = prog(t, T.newEv, 0.6);
+    set(newEv, out3(ne), `translateY(${(1 - out3(ne)) * -70}px) scale(${0.9 + 0.1 * back(ne)})`);
+    const glow = t > T.newEv ? Math.max(0, Math.sin((t - T.newEv) * 3)) * 18 : 0;
+    newEv.style.boxShadow = `0 0 ${glow}px rgba(245,165,36,.6)`;
+    const to = win(t, T.toast, T.cal[1] + 0.3, 0.4);
+    set($('toast'), to, `translateY(${(1 - to) * 20}px)`);
+  }
+
+  /* ---------- playback ---------- */
+  const qs = new URLSearchParams(location.search);
+  const RECORD = qs.has('record');
+  const LOOP = qs.has('loop');
+  if (RECORD) document.body.classList.add('rec');
+  let t = parseFloat(qs.get('t') || '0') || 0;
+  let playing = !qs.has('paused');
+  let last = null;
+  const scrub = $('scrub'), label = $('tlabel'), bPlay = $('bPlay');
+
+  function show(tt) {
+    t = Math.max(0, Math.min(DURATION, tt));
+    render(t);
+    scrub.value = t; label.textContent = t.toFixed(1) + ' / ' + DURATION.toFixed(1) + 's';
+    bPlay.textContent = playing ? 'Pause' : 'Play';
+  }
+  function tick(now) {
+    if (playing) {
+      if (last != null) t += (now - last) / 1000;
+      if (t >= DURATION) { if (LOOP) t = 0; else { t = DURATION; playing = false; } }
+    }
+    last = now;
+    show(t);
+    requestAnimationFrame(tick);
+  }
+  function fit() {
+    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    $('stage').style.transform = `scale(${s}) translate(-50%, -50%)`;
+  }
+  addEventListener('resize', fit); fit();
+
+  bPlay.onclick = () => { playing = !playing; if (playing && t >= DURATION) t = 0; };
+  $('bRestart').onclick = () => { t = 0; playing = true; };
+  scrub.oninput = () => { playing = false; show(parseFloat(scrub.value)); };
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); bPlay.onclick(); }
+    else if (e.key === 'r' || e.key === 'R') { t = 0; playing = true; }
+    else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('hideui');
+    else if (e.key === 'ArrowRight') t = Math.min(DURATION, t + 1);
+    else if (e.key === 'ArrowLeft') t = Math.max(0, t - 1);
+  });
+
+  // hook for frame-by-frame capture (see README / capture.mjs)
+  window.__demo = { duration: DURATION, seek: (s) => { playing = false; show(s); } };
+
+  // In record mode hold the first frame for 1s so the recorder can start cleanly.
+  if (RECORD && playing) { playing = false; setTimeout(() => { playing = true; last = null; }, 1000); }
+  show(t);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
