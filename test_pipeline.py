@@ -1,7 +1,7 @@
 """Offline pipeline test — NO Twilio / OpenAI calls.
 
 Runs transcription (mock: the sample transcripts ARE the transcription)
--> extraction (mock extractor in app.py) -> WhatsApp formatting -> ledger
+-> extraction (mock extractor in app.py) -> SMS summary formatting -> ledger
 write (to a temp dir), and asserts the expected fields.
 
 Usage:
@@ -21,7 +21,9 @@ os.environ["ZERO_COST_MODE"] = "1"
 os.environ.pop("OPENAI_API_KEY", None)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app import extract_booking, format_whatsapp, append_ledger  # noqa: E402
+from datetime import date
+
+from app import extract_booking, format_summary, append_ledger  # noqa: E402
 import app as app_module  # noqa: E402
 
 SAMPLES = json.loads(
@@ -29,9 +31,15 @@ SAMPLES = json.loads(
 )["samples"]
 
 
+def _call_date(sample: dict):
+    """Relative dates are resolved against the sample's call date (fixed, so
+    the test does not depend on today's date)."""
+    return date.fromisoformat(sample["call_date"]) if sample.get("call_date") else None
+
+
 def check(sample: dict) -> list[str]:
     failures = []
-    booking, method = app_module.extract_booking_with_source(sample["transcript"])
+    booking, method = app_module.extract_booking_with_source(sample["transcript"], _call_date(sample))
     # $0 mode must never claim a paid extractor when no key / no Ollama is present.
     if "openai" in method:
         failures.append(f"zero-cost test used a paid extractor: {method}")
@@ -51,12 +59,12 @@ def check(sample: dict) -> list[str]:
     for field in expected.get("missing_fields_must_include", []):
         if field not in (booking.get("missing_fields") or []):
             failures.append(f"missing_fields should include {field!r}, got {booking.get('missing_fields')}")
-    # WhatsApp text must contain the key facts and never invent a phone number.
-    wa = format_whatsapp(booking)
+    # SMS text must contain the key facts and never invent a phone number.
+    wa = format_summary(booking)
     if expected.get("phone") and expected["phone"] not in wa:
-        failures.append("WhatsApp text is missing the caller's phone number")
+        failures.append("SMS text is missing the caller's phone number")
     if not expected.get("phone") and "04" in wa.split("Phone:")[1].split("\n")[0]:
-        failures.append("WhatsApp text invented a phone number")
+        failures.append("SMS text invented a phone number")
     return failures
 
 
@@ -69,8 +77,8 @@ def main() -> int:
 
     total_failures = 0
     for sample in SAMPLES:
-        booking = extract_booking(sample["transcript"])
-        wa = format_whatsapp(booking)
+        booking = extract_booking(sample["transcript"], _call_date(sample))
+        wa = format_summary(booking)
         append_ledger(booking, call_sid="TEST", recording_sid=f"TEST-{sample['id']}",
                       transcript=sample["transcript"])
         failures = check(sample)
@@ -78,7 +86,7 @@ def main() -> int:
         total_failures += len(failures)
         print(f"\n=== {sample['id']} [{status}] ===")
         print(f"Booking: {json.dumps(booking, ensure_ascii=False)}")
-        print("--- WhatsApp message ---")
+        print("--- SMS summary ---")
         print(wa)
         for f in failures:
             print(f"  ✗ {f}")
@@ -89,7 +97,7 @@ def main() -> int:
     if total_failures:
         print("RESULT: FAIL — see failures above")
         return 1
-    print("RESULT: PASS — $0 pipeline (rule-based extract -> WhatsApp format -> ledger) works offline, no paid API")
+    print("RESULT: PASS — $0 pipeline (rule-based extract -> SMS summary format -> ledger) works offline, no paid API")
     return 0
 
 
