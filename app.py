@@ -170,15 +170,32 @@ def extract_booking_mock(transcript: str) -> dict:
     t = transcript
     # Normalise traditional -> simplified for the patterns below (Whisper
     # tiny often outputs traditional Chinese). Keep the original for display.
-    _trad = str.maketrans({"兩": "两", "點": "点", "預": "预", "個": "个", "號": "号"})
+    _trad = str.maketrans({"兩": "两", "點": "点", "預": "预", "個": "个", "號": "号",
+                           "沒": "没", "過": "过", "無": "无", "週": "周", "禮": "礼",
+                           "時": "时", "兒": "儿"})
     tn = t.translate(_trad)
     _en_num = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
                "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
                "eleven": 11, "twelve": 12, "a": 1, "an": 1}
-    _zh_num = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6,
-               "七": 7, "八": 8, "九": 9, "十": 10, "十一": 11, "十二": 12}
+    _zh_digit = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+                 "六": 6, "七": 7, "八": 8, "九": 9}
 
-    def _count(pat_en: str, pat_zh: str):
+    def _zh_int(s: str):
+        """'12' / '十二' / '二十' / '三十五' -> int (0-99); None if not a number."""
+        if s.isdigit():
+            return int(s)
+        if not s or any(c not in _zh_digit and c != "十" for c in s):
+            return None
+        if "十" not in s:
+            return _zh_digit[s] if len(s) == 1 else None
+        tens, _, ones = s.partition("十")
+        if len(tens) > 1 or len(ones) > 1 or "十" in ones:
+            return None
+        return (_zh_digit[tens] if tens else 1) * 10 + (_zh_digit[ones] if ones else 0)
+
+    _ZH_NUM = r"[零一二两三四五六七八九十]+"
+
+    def _count(pat_en: str, pat_zh: str, none_zh: bool = False, none_en: str = ""):
         # Collect every numbered mention of this unit and take the earliest
         # in the text (e.g. "4个小孩" beats the later "一个小孩" in the
         # allergy sentence). "a/an table" is NOT a number — tables fall
@@ -187,59 +204,102 @@ def extract_booking_mock(transcript: str) -> dict:
         for m in re.finditer(rf"(\d+|{'|'.join(k for k in _en_num if k not in ('a', 'an'))})\s*{pat_en}", t, re.I):
             v = m.group(1).lower()
             cands.append((m.start(), int(v) if v.isdigit() else _en_num.get(v)))
-        for m in re.finditer(rf"(\d+)\s*个?\s*{pat_zh}", tn):
-            cands.append((m.start(), int(m.group(1))))
-        for m in re.finditer(rf"([一二两三四五六七八九十]+)\s*个?\s*{pat_zh}", tn):
-            cands.append((m.start(), _zh_num.get(m.group(1))))
+        for m in re.finditer(rf"(\d+|{_ZH_NUM})\s*[个位]?\s*(?:{pat_zh})", tn):
+            v = _zh_int(m.group(1))
+            if v is not None:
+                cands.append((m.start(), v))
         if cands:
             return min(cands)[1]
+        # An explicit "none" ("没有小孩", "no kids") is a stated 0, not missing.
+        # "有没有小孩" is a question, not an answer, so it does not count.
+        if none_zh and re.search(rf"(?<!有)(?:没有|没|不带|无)\s*(?:{pat_zh})", tn):
+            return 0
+        if none_en and re.search(none_en, t, re.I):
+            return 0
         return None
 
-    adults = _count(r"adults?", "大人")
-    children = _count(r"(?:children|child|kids?)", "小孩|小朋友")
+    adults = _count(r"adults?", "大人|成人")
+    children = _count(r"(?:children|child|kids?)", "小孩|小朋友|孩子|儿童",
+                      none_zh=True,
+                      none_en=r"\bno\s+(?:children|child|kids?)\b|\badults\s+only\b")
+    if children is None and re.search(r"(?:只有|都是|全是)\s*大人", tn):
+        children = 0
     tables = _count(r"tables?", "桌")
     if tables is None and (re.search(r"\b(a|an)\s+table\b", t, re.I) or "一桌" in tn):
         tables = 1
-    # Times: 19:00 / 7pm / 7 p.m. / 晚上七点 — handle the common forms.
+
+    # Times: 19:00 / 7:30pm / 7pm / 7 p.m. / 晚上七点 / 中午12点半 / 七点三十分.
+    def _to_24h(h: int, period: str | None) -> int:
+        if not period:
+            return h
+        p = period.lower()
+        if p.startswith("p") or p in ("下午", "傍晚", "晚上"):
+            return h + 12 if h < 12 else h
+        if p.startswith("a"):
+            return 0 if h == 12 else h
+        if p == "中午":  # 中午12点 = 12:00, 中午1点 = 13:00
+            return h + 12 if h < 6 else h
+        return h  # 早上/上午/凌晨
+
+    _ZH_PERIOD = r"(凌晨|早上|上午|中午|下午|傍晚|晚上)"
     time = None
-    m = re.search(r"(\d{1,2}):(\d{2})", t)
+    m = re.search(rf"{_ZH_PERIOD}?\s*(\d{{1,2}})\s*[:：]\s*(\d{{2}})\s*(p\.?m\.?|a\.?m\.?)?", tn, re.I)
     if m:
-        time = f"{int(m.group(1)):02d}:{m.group(2)}"
+        h, mins = int(m.group(2)), int(m.group(3))
+        time = f"{_to_24h(h, m.group(4) or m.group(1)):02d}:{mins:02d}"
     else:
-        m = re.search(r"(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:\.?\s*)?(p\.?m\.?|a\.?m\.?)\b", t, re.I)
+        m = re.search(r"(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:\.?\s*)?(p\.?m\.?|a\.?m\.?)", t, re.I)
         if m:
             raw = m.group(1).lower()
             h = int(raw) if raw.isdigit() else _en_num.get(raw, 0)
-            if m.group(2).lower().startswith("p") and h != 12:
-                h += 12
-            time = f"{h:02d}:00"
+            time = f"{_to_24h(h, m.group(2)):02d}:00"
         else:
-            m = re.search(r"(晚上|下午|中午|早上|上午)?\s*([一二三四五六七八九十]+)点", tn)
+            # Lookbehind stops "星期六"/"周六" being read as the hour.
+            m = re.search(
+                rf"{_ZH_PERIOD}?\s*(?<![期周拜])(\d{{1,2}}|{_ZH_NUM})\s*[点时]\s*"
+                rf"(半|一刻|三刻|(?:(\d{{1,2}}|{_ZH_NUM})\s*分?))?", tn)
             if m:
-                h = _zh_num.get(m.group(2), 0)
-                if m.group(1) in ("晚上", "下午") and h != 12:
-                    h += 12
-                time = f"{h:02d}:00"
+                h = _zh_int(m.group(2))
+                mins = 0
+                if m.group(3) == "半":
+                    mins = 30
+                elif m.group(3) == "一刻":
+                    mins = 15
+                elif m.group(3) == "三刻":
+                    mins = 45
+                elif m.group(4):
+                    mins = _zh_int(m.group(4)) or 0
+                if h is not None and 0 <= h <= 24 and 0 <= mins < 60:
+                    time = f"{_to_24h(h, m.group(1)):02d}:{mins:02d}"
+
+    # Allergens: English words need word boundaries ("nut" is inside "minute").
+    _ALLERGEN = (r"(?:\bpeanuts?\b|\bnuts?\b|\bgluten\b|\bseafood\b|\bdairy\b|\beggs?\b"
+                 r"|花生|坚果|麸质|海鲜|乳制|鸡蛋)")
     allergies = None
-    if re.search(r"(peanut|花生|nut|坚果|gluten|麸质|seafood|海鲜|dairy|乳制|egg|鸡蛋)", t, re.I):
-        m = re.search(
-            r"((?:peanut|花生|nut|坚果|gluten|麸质|seafood|海鲜|dairy|乳制|egg|鸡蛋)[a-zA-Z\u4e00-\u9fff ]{0,12}?(?:allergy|过敏)?)",
-            t, re.I)
-        allergies = m.group(1).strip(" .，。") if m else None
-    elif re.search(r"(no allerg|没有过敏|没有食物过敏)", t, re.I):
+    m = re.search(rf"({_ALLERGEN}[a-zA-Z一-鿿 ]{{0,12}}?(?:allergy|过敏)?)", tn, re.I)
+    if m:
+        allergies = m.group(1).strip(" .，。")
+    elif (re.search(r"\bno\s+(?:food\s+)?allerg|\bnot?\s+(?:one\s+)?(?:is\s+)?allergic"
+                    r"|\ballerg\w*[\s:,.?-]{0,4}(?:none|no|nope|nothing)\b", t, re.I)
+          or re.search(r"(?<!有)(?:没有|没|无|不)(?:食物)?过敏", tn)
+          # "过敏？没有" / "有没有过敏……没有" — a "no" answer right after the question.
+          # "没有小孩" etc. right after is about something else, not allergies.
+          or re.search(r"过敏[^。！!]{0,8}?(?:没有|没|无)(?!\s*(?:小孩|小朋友|孩子|大人|儿童))", tn)):
         allergies = "none stated"
     name = None
-    m = re.search(r"(?:我叫|我是|my name is|this is)\s*([A-Za-z\u4e00-\u9fff]{2,20}(?:\s+[A-Za-z\u4e00-\u9fff]{2,20})?)", t, re.I)
+    m = re.search(r"(?:我叫|我是|my name is|this is)\s*([A-Za-z一-鿿]{2,20}(?:\s+[A-Za-z一-鿿]{2,20})?)", t, re.I)
     if m:
         name = m.group(1)
     phone = None
     m = re.search(r"(0\d[\d\s]{7,11})", t)
     if m:
         phone = re.sub(r"\s+", "", m.group(1))
-    # Date: keep the caller's words — the mock does not resolve relative dates
-    # (a bare weekday like "Friday" is not a firm date, so it stays missing).
+    # Date: keep the caller's words — the mock does not resolve relative dates.
+    # A bare weekday ("星期六", "this Saturday") is recorded so the owner sees
+    # what was said, but it is not a firm date, so "date" stays in missing_fields.
     date = None
-    m = re.search(r"(20\d{2}-\d{2}-\d{2}|\d{1,2}月\d{1,2}[日号])", tn)
+    date_firm = True
+    m = re.search(r"(20\d{2}-\d{2}-\d{2}|\d{1,2}月\d{1,2}[日号]?)", tn)
     if m:
         date = m.group(1)
     else:
@@ -253,8 +313,14 @@ def extract_booking_mock(transcript: str) -> dict:
             m = re.search(r"(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?", t, re.I)
             if m:
                 date = f"{months[m.group(1).lower()]:02d}-{int(m.group(2)):02d}"
+    if date is None:
+        m = (re.search(r"((?:这个?|下个?|本)?(?:星期|礼拜|周)[一二三四五六日天])", tn)
+             or re.search(r"\b((?:(?:this|next|coming)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b", t, re.I))
+        if m:
+            date = f"{m.group(1)} (weekday only)"
+            date_firm = False
     missing = [k for k, v in {
-        "date": date, "time": time, "tables": tables,
+        "date": date if date_firm else None, "time": time, "tables": tables,
         "adults": adults, "children": children, "name": name, "phone": phone,
     }.items() if v is None]
     return {
