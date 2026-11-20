@@ -1,1 +1,85 @@
-{"samples":[{"expected":{"adults":20,"allergies":"花生","children":4,"date":"11月14","name":"李明","phone":"0412345678","tables":4,"time":"19:00"},"id":"zh-booking-complete","language":"zh","note":"Complete Chinese booking. Mock extractor keeps the date in the caller's words (11月14); the LLM extractor converts it to YYYY-MM-DD.","transcript":"你好，我想预订下周六11月14号晚上七点，4桌，20个大人，4个小孩。其中一个小孩对花生过敏。我叫李明，电话是0412345678。麻烦帮我安排靠窗的位置，谢谢。"},{"expected":{"adults":8,"allergies":"none stated","children":2,"name":"Sarah Chen","phone":"0423456789","tables":1,"time":"19:00"},"id":"en-booking-complete","language":"en","note":"Complete English booking. 'No allergies' -> allergies = 'none stated', not null.","transcript":"Hi, I'd like to book a table for this Saturday at 7pm. There will be 8 adults and 2 children, one table please. No allergies. My name is Sarah Chen, my number is 0423456789."},{"expected":{"missing_fields_must_include":["date","phone"],"name":"David"},"id":"en-booking-missing-info","language":"en","note":"Vague booking: no phone number, no firm date/time, no tables. The extractor must NOT invent these — they must appear in missing_fields.","transcript":"Hi, um, I wanted to book for next Friday evening, I think around six or seven, for about ten people? I'm not sure about the kids yet. My name is David. I'll call back with the details, thanks, bye."}]}
+{
+ "samples": [
+  {
+   "expected": {
+    "adults": 20,
+    "allergies": "花生",
+    "children": 4,
+    "date": "11月14",
+    "name": "李明",
+    "phone": "0412345678",
+    "tables": 4,
+    "time": "19:00",
+    "special_requests": "靠窗"
+   },
+   "id": "zh-booking-complete",
+   "language": "zh",
+   "note": "Complete Chinese booking. Mock extractor keeps the date in the caller's words (11月14); the LLM extractor converts it to YYYY-MM-DD.",
+   "transcript": "你好，我想预订下周六11月14号晚上七点，4桌，20个大人，4个小孩。其中一个小孩对花生过敏。我叫李明，电话是0412345678。麻烦帮我安排靠窗的位置，谢谢。",
+   "call_date": "2026-11-19"
+  },
+  {
+   "expected": {
+    "adults": 8,
+    "allergies": "none stated",
+    "children": 2,
+    "name": "Sarah Chen",
+    "phone": "0423456789",
+    "tables": 1,
+    "time": "19:00",
+    "date": "2026-11-21"
+   },
+   "id": "en-booking-complete",
+   "language": "en",
+   "note": "Complete English booking. 'No allergies' -> allergies = 'none stated', not null. 'this Saturday' on a Thu 2026-11-19 call -> 2026-11-21.",
+   "transcript": "Hi, I'd like to book a table for this Saturday at 7pm. There will be 8 adults and 2 children, one table please. No allergies. My name is Sarah Chen, my number is 0423456789.",
+   "call_date": "2026-11-19"
+  },
+  {
+   "expected": {
+    "name": "David",
+    "date": "2026-11-27",
+    "missing_fields_must_include": [
+     "phone",
+     "time",
+     "tables"
+    ]
+   },
+   "id": "en-booking-missing-info",
+   "language": "en",
+   "note": "Vague booking: no phone number, no firm time, no tables. The extractor must NOT invent these — they must appear in missing_fields. 'next Friday' = Friday of the following week (call Thu 2026-11-19 -> 2026-11-27).",
+   "transcript": "Hi, um, I wanted to book for next Friday evening, I think around six or seven, for about ten people? I'm not sure about the kids yet. My name is David. I'll call back with the details, thanks, bye.",
+   "call_date": "2026-11-19"
+  },
+  {
+   "expected": {
+    "date": "2026-11-21",
+    "time": "12:30",
+    "adults": 5,
+    "children": 0,
+    "allergies": "none stated"
+   },
+   "id": "zh-live-call-2026-11-19",
+   "language": "zh",
+   "note": "Regression from the 2026-11-19 live call (Thursday): 星期六 -> 2026-11-21, 12点半 -> 12:30, 没有小孩 -> 0 children, a bare 没有 answer to the allergy question -> 'none stated'.",
+   "transcript": "你好，我想订星期六中午12点半，五个大人没有小孩。有没有过敏？没有。",
+   "call_date": "2026-11-19"
+  },
+  {
+   "id": "zh-occasion-tomorrow",
+   "language": "zh",
+   "call_date": "2026-11-19",
+   "note": "Relative day (明天) resolves from the call date; occasion (生日) and extra comments go into special_requests.",
+   "transcript": "你好，今天是我老婆生日，想订明天晚上7点，两个大人一个小孩，没有过敏。麻烦帮我安排靠窗的位置，再准备一个蛋糕。我叫王先生，电话0498765432。",
+   "expected": {
+    "date": "2026-11-20",
+    "time": "19:00",
+    "adults": 2,
+    "children": 1,
+    "allergies": "none stated",
+    "special_requests": "Occasion: Birthday",
+    "phone": "0498765432"
+   }
+  }
+ ]
+}

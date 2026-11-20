@@ -50,3 +50,16 @@ Build a recording-version phone booking agent for Perth restaurants, then other 
   number + SID/token in .env, ngrok (not installed here), WhatsApp
   Sandbox join from Charles's phone. Ollama not installed — optional,
   rule-based extraction is the verified fallback. Google Calendar stub.
+
+## Build notes (2026-11-19, after the first live call)
+
+- Live call 2026-11-19 captured only Adults. Rule-based extractor fixed:
+  12点半 times, 没有小孩 -> 0 children, bare 没有 allergy answer -> none
+  stated, and relative dates (星期六 / 这周六 / this Saturday / 今天 /
+  明天 / 后天 / 下星期X / next X) now resolve against the call date
+  (Perth). Occasion (birthday/生日, anniversary, wedding, party ...) and
+  extra comments go to special_requests.
+- Recording notice is now English only: "This call is recorded to take
+  your booking details."
+- Owner summary moved from WhatsApp to SMS, sent from the 08 number
+  +61 8 7562 7188 (SMS_FROM_NUMBER) to OWNER_SMS_NUMBER. Same content.

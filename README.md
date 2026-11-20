@@ -3,13 +3,15 @@
 Recording-version phone booking agent for Perth restaurants (later: any
 appointment business — auto repair, beauty, clinics).
 
-**Flow:** caller dials the Twilio number → bilingual recording notice
-(EN + ZH) → call is recorded → on recording-complete the audio is
+**Flow:** caller dials the Twilio number → English recording notice
+("This call is recorded to take your booking details.") → call is recorded → on recording-complete the audio is
 downloaded → transcribed (in $0 mode: local faster-whisper, or mock if
 not installed — logged) → booking fields extracted (in $0 mode: local
 Ollama if reachable, otherwise the rule-based extractor — never invents;
-missing = "not stated") → tidy summary sent to the owner's WhatsApp via
-Twilio WhatsApp Sandbox → Google Calendar event (optional/stub) → every
+missing = "not stated"; relative dates like 星期六 / tomorrow are resolved
+against the call date; occasion + extra comments go to "Special requests")
+→ tidy summary sent to the owner by SMS from the 08 number
+(+61 8 7562 7188) via Twilio → Google Calendar event (optional/stub) → every
 booking logged to `data/bookings.jsonl` + `data/bookings.csv`. No database,
 no heavy framework.
 
@@ -25,7 +27,7 @@ What is $0, and what is not:
 | Webhook exposure | **ngrok free tier** (`ngrok http 8000`) | A small VPS / Render / Fly.io for a stable URL |
 | Transcription | **Local faster-whisper** (CPU, `tiny` or `base` model). Install: `pip install faster-whisper`. If it is not installed, the app logs `mock transcription — install faster-whisper for real audio` and does **not** call any paid API — the booking is still logged, with all fields missing, so nothing is silently invented. | OpenAI `gpt-transcribe` $0.0045/min (only if `ZERO_COST_MODE=0`) |
 | Extraction | **Local Ollama** if reachable at `http://localhost:11434` — install from https://ollama.com, then `ollama pull qwen2.5:3b` (or `llama3.2:3b`). If Ollama is not running, the app falls back to the **rule-based extractor** in `app.py` and logs which one was used for every booking. | OpenAI `gpt-4o-mini` ~$0.01/call (only if `ZERO_COST_MODE=0`) |
-| WhatsApp | **Twilio WhatsApp Sandbox** — 100 free messages in the trial. Owner joins once from his phone (`join <code>` to `+14155238886`). No Meta approval needed for the test. | Official WhatsApp Business sender + approved Utility template |
+| Owner summary | **Twilio SMS** from the 08 number `+61 8 7562 7188` (`SMS_FROM_NUMBER`) to the owner's mobile (`OWNER_SMS_NUMBER`). The number must be SMS-capable in Twilio. | Twilio SMS per-message charge |
 | Calendar | Google Calendar API is free. The calendar step stays **disabled** until OAuth credentials exist (`GOOGLE_CREDENTIALS_PATH`); the intended event is logged instead. | Free (API), once credentials exist |
 
 **Exact commands for the $0 pipeline:**
@@ -51,10 +53,10 @@ curl http://localhost:8000/health
 #      ollama_reachable: true/false
 ```
 
-**$0 self-test (Charles as owner AND customer):** join the WhatsApp
-sandbox from your phone, call the Twilio **trial** number from your
+**$0 self-test (Charles as owner AND customer):** set `OWNER_SMS_NUMBER`
+to your mobile, call the Twilio **trial** number from your
 verified phone, say a booking in Chinese, hang up, wait ~30–60 s.
-You should get the WhatsApp summary (or, if faster-whisper is not
+You should get the SMS summary (or, if faster-whisper is not
 installed, a logged "mock transcription" booking with fields missing —
 install faster-whisper and repeat). Repeat in English and with a vague
 call. See §6 for the full 6-call script.
@@ -74,7 +76,7 @@ $249 setup, waived for the first test restaurant). Direct cost is
 
 | Account | Why | Where |
 |---|---|---|
-| Twilio | Trial number, call recording, WhatsApp sending | https://www.twilio.com — sign up (trial, no card) |
+| Twilio | Phone number, call recording, SMS sending | https://www.twilio.com — sign up (trial, no card) |
 | OpenAI | Transcription + extraction — **only if `ZERO_COST_MODE=0`**; not needed for the $0 test | https://platform.openai.com/api-keys |
 | Local (free) | faster-whisper + Ollama — the $0 transcription/extraction path | `pip install faster-whisper`; https://ollama.com |
 | Google Cloud (optional) | Calendar events only; MVP works without it | https://console.cloud.google.com |
@@ -116,25 +118,18 @@ ngrok http 8000
 For a real pilot, deploy the same app to a small VPS / Render / Fly.io
 with the same `.env` values and a stable domain — the code does not change.
 
-## 4. WhatsApp — sandbox first (test), official later
+## 4. SMS summary to the owner
 
-**Sandbox (MVP test — no Meta approval needed):**
-1. Twilio Console → Messaging → Try it out → WhatsApp Sandbox.
-2. The owner (Charles, for the self-test) sends the sandbox join code
-   from his own phone to the Twilio sandbox number `+14155238886`,
-   e.g. `join <code>`. This is a one-time opt-in per phone.
-3. Set in `.env`: `WHATSAPP_MODE=sandbox`,
-   `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`,
-   `OWNER_WHATSAPP_NUMBER=+61...` (owner's mobile, E.164).
-4. Sandbox messages only go to phones that have joined. That is fine for
-   the self-test; it is not a product limitation to fix yet.
+The booking summary is sent by SMS through the Twilio Messages API, from
+the business's 08 number to the owner's mobile:
 
-**Official (before a paying restaurant):**
-Apply for a WhatsApp Business sender in Twilio (business verification +
-a Utility template for the booking summary, e.g. "New booking: {{1}}").
-Then set `WHATSAPP_MODE=official` and
-`TWILIO_WHATSAPP_FROM=whatsapp:+61...` (your approved sender).
-Template approval typically takes 1–2 days.
+1. Twilio Console → Phone Numbers → Active numbers → `+61 8 7562 7188`:
+   check that **SMS** is listed under Capabilities. Australian geographic
+   (02/03/07/08) numbers are often voice-only; if SMS is not offered, the
+   send fails with a Twilio error and the booking is still in the ledger.
+2. Set in `.env`: `SMS_FROM_NUMBER=+61875627188` (the default) and
+   `OWNER_SMS_NUMBER=+61...` (owner's mobile, E.164).
+3. A trial account can only text verified numbers.
 
 ## 5. Google Calendar (optional — disabled by default)
 
@@ -153,19 +148,19 @@ Template approval typically takes 1–2 days.
 No restaurant needed for the first test. One phone is enough:
 
 1. Start the app + ngrok, set the Twilio webhook (steps 2–3).
-2. Join the WhatsApp sandbox from your phone (step 4).
+2. Set `OWNER_SMS_NUMBER` to your mobile (step 4).
 3. **As customer:** call the Twilio number from your phone.
    Say a booking in Chinese, hang up, wait ~30–60 s.
    Repeat in English. Try one vague call (no phone number / no firm date).
-4. **As owner:** check WhatsApp — you should get a tidy summary, with
+4. **As owner:** check your SMS — you should get a tidy summary, with
    `⚠️ Missing: ...` on the vague call. Check `data/bookings.jsonl`.
 5. Verify offline any time, with no paid calls:
    ```bash
    MOCK_MODE=1 python3 test_pipeline.py
    ```
-   Runs the 3 sample transcripts in `samples/transcripts.json`
-   (Chinese complete / English complete / missing-info) through
-   extraction → WhatsApp formatting → ledger, and asserts the fields.
+   Runs the sample transcripts in `samples/transcripts.json` (each with a
+   fixed `call_date` for relative dates) through extraction → SMS summary
+   formatting → ledger, and asserts the fields.
 
 ## 7. Endpoints
 
@@ -174,13 +169,13 @@ No restaurant needed for the first test. One phone is enough:
 | `/health` | GET | Config status (no secrets returned) |
 | `/voice` | POST | TwiML: notice + record (Twilio Voice webhook) |
 | `/recording-complete` | POST | Twilio recording callback; work runs in background |
-| `/test-extract` | POST form `transcript=...` | Extract + format without a phone call |
+| `/test-extract` | POST form `transcript=...` (optional `call_date=YYYY-MM-DD`) | Extract + format without a phone call |
 
 ## 8. Files
 
 - `app.py` — the whole app: TwiML, webhook, transcription, extraction
-  prompt + JSON schema, WhatsApp send, calendar stub, ledger.
-- `samples/transcripts.json` — 3 test transcripts + expected fields.
+  prompt + JSON schema, SMS send, calendar stub, ledger.
+- `samples/transcripts.json` — test transcripts + expected fields.
 - `test_pipeline.py` — offline mock test (no Twilio/OpenAI calls).
 - `requirements.txt`, `.env.example` — deps and config template.
 - `data/` — created at runtime: `bookings.jsonl`, `bookings.csv`,

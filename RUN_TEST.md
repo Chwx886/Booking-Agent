@@ -98,17 +98,16 @@ supply these at test time:
    phone is already verified, so his test calls will work.
    Set in `.env`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
    `TWILIO_NUMBER` (the trial number).
-2. **WhatsApp Sandbox join** — Charles's phone must join the Twilio
-   WhatsApp Sandbox: send `join <code>` to +1 415 523 8886 in WhatsApp
-   (the code is shown in Twilio Console > Messaging > Try it out).
-   Set in `.env`: `OWNER_WHATSAPP_NUMBER=+61...` (Charles's mobile).
+2. **SMS summary** — sent from the 08 number +61 8 7562 7188
+   (`SMS_FROM_NUMBER`, must be SMS-capable in Twilio) to the owner.
+   Set in `.env`: `OWNER_SMS_NUMBER=+61...` (Charles's mobile).
 3. **ngrok URL** in the Twilio webhook (step above) + the server running
    on this VM while Charles calls.
 4. Optional: Ollama + `ollama pull qwen2.5:3b` for LLM extraction instead
    of rule-based. NOT required — rule-based is verified and is the safer
    default for the $0 test (it never invents a field).
 5. Google Calendar stays disabled (stub) until OAuth credentials exist —
-   the booking is still logged and WhatsApp'd without it.
+   the booking is still logged and texted without it.
 
 ## Live test script (Charles, ~2 hours, from his phone)
 
@@ -117,7 +116,7 @@ Call the trial number from his own (verified) phone, 6 calls, ~3 min each:
 3. English, missing info — summary must say "not stated", not guess.
 4. Chinese, with an allergy (e.g. 1 person peanut allergy).
 5. Small talk first, then the booking — only booking fields extracted.
-6. Greeting only, no booking — NO WhatsApp/calendar, logged only.
+6. Greeting only, no booking — NO SMS/calendar, logged only.
 
-Pass = all 6 in the ledger (`data/bookings.jsonl`), WhatsApp within
+Pass = all 6 in the ledger (`data/bookings.jsonl`), SMS within
 ~5 min of hangup, calendar/date/time/allergy correct, nothing invented.
